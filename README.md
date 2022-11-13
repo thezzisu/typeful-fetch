@@ -1,5 +1,7 @@
 # Typeful Fetch
 
+[![npm](https://img.shields.io/npm/v/typeful-fetch?style=flat-square)](https://www.npmjs.com/package/typeful-fetch)
+
 A fetch builder with type support
 
 ## Usage
