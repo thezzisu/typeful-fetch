@@ -95,4 +95,14 @@ describe('client', () => {
       `fetch("/?aaa=123", {"method":"POST","headers":{"Content-Type":"application/json","X-ZZS":"zzs"},"body":"{\\"ping\\":111}"})`
     )
   })
+  it('unsafe client', () => {
+    const logs: string[] = []
+    globalThis.fetch = createFaker(logs, 'fetch')
+    const client = createClient('/').$unsafe
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const result: Promise<unknown> = client.$get.query({ aaa: '123' }).fetch()
+    expect(logs).to.include(
+      `fetch("/?aaa=123", {"method":"GET","headers":{},"body":null})`
+    )
+  })
 })

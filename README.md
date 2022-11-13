@@ -74,6 +74,8 @@ client.misc.$put.body({ eee: '789' }).fetch() // Promise<{ fff: string; }>
 client.misc.hello.$get.fetch() // Promise<{ ggg: string; }>
 ```
 
+More examples could be found in the unit tests.
+
 ## References
 
 ### Descriptors
@@ -147,7 +149,29 @@ function createClient<R extends RouterDescriptor<any>>(
 
 `createClient` takes a `RouterDescriptor` as generic parameter and returns a client with type support.
 
-Parameters:
+**Parameters:**
 
 - `path`: the base path of the client
 - `options`: the default options of the client, which'll be deep merged into every fetch request
+
+**Returns:**
+
+A client with type support, which have the intuitive structure corresponding to the given `RouterDescriptor`.
+
+Generally speaking, you will have to use `client.some.path.to.the.api.$method` to get a `ClientHandler`, using which you could form the actual fetch request. The expression given above will be mapped into an URL `${path}/some/path/to/the/api` and a method `method`, which is saved in the `ClientHandler` that you got.
+
+Also, you could use `client.$unsafe` to get a client with identical path and options, but have type checking turned off. Use this if you want to use the client to fetch endpoints that are not described by the `RouterDescriptor`.
+
+#### ClientHandler
+
+Methods:
+
+- `body`: set the body of the request
+- `query`: set the querystring of the request
+- `params`: set the params of the request
+- `headers`: set the headers of the request
+- `fetch`: form and fire the actual fetch request
+
+Notice that `query` is serialized using the `qs` package, and `params` are implemented by simple doing string replacement stuff. **Pay attention when using these two methods**.
+
+Please refer to the code for more details.

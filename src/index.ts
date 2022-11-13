@@ -62,7 +62,7 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
     public _info: H['schema']
   ) {}
 
-  body(body: H['schema']['body']): ClientHandler<H> {
+  body(body: UndefinedToUnknown<H['schema']['body']>): ClientHandler<H> {
     return new ClientHandler(
       this._options,
       this._path,
@@ -71,7 +71,9 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
     )
   }
 
-  query(query: H['schema']['querystring']): ClientHandler<H> {
+  query(
+    query: UndefinedToUnknown<H['schema']['querystring']>
+  ): ClientHandler<H> {
     return new ClientHandler(
       this._options,
       this._path,
@@ -80,7 +82,7 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
     )
   }
 
-  params(params: H['schema']['params']): ClientHandler<H> {
+  params(params: UndefinedToUnknown<H['schema']['params']>): ClientHandler<H> {
     return new ClientHandler(
       this._options,
       this._path,
@@ -89,7 +91,9 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
     )
   }
 
-  headers(headers: H['schema']['headers']): ClientHandler<H> {
+  headers(
+    headers: UndefinedToUnknown<H['schema']['headers']>
+  ): ClientHandler<H> {
     return new ClientHandler(
       this._options,
       this._path,
@@ -101,8 +105,19 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
   async fetch(
     options: RequestInit = {}
   ): Promise<UndefinedToUnknown<H['schema']['response'][200]>> {
+    let path = this._path
+    if (!path.endsWith('/')) path += '/'
+    for (const key in this._info.params) {
+      const value = this._info.params[key]
+      path = path.replace(
+        `/:${key}/`,
+        `/${String(value).replaceAll('$', '$$$$')}/`
+      )
+    }
+    const query = qs.stringify(this._info.query)
+    if (query) path += `?${query}`
     const resp = await fetch(
-      this._path + '?' + qs.stringify(this._info.query ?? {}),
+      path,
       deepAssign(
         {},
         this._options,
@@ -148,8 +163,43 @@ type InferClient<R extends RouterDescriptor<any>> = Id<
       K
     >
   } & InferClientSub<R, ''> &
-    InferClientSub<R, '/'>
+    InferClientSub<R, '/'> & {
+      $unsafe: UnsafeClient
+    }
 >
+
+type WellKnownMethods =
+  | 'DELETE'
+  | 'GET'
+  | 'HEAD'
+  | 'PATCH'
+  | 'POST'
+  | 'PUT'
+  | 'OPTIONS'
+  | 'PROPFIND'
+  | 'PROPPATCH'
+  | 'MKCOL'
+  | 'COPY'
+  | 'MOVE'
+  | 'LOCK'
+  | 'UNLOCK'
+  | 'TRACE'
+  | 'SEARCH'
+type UnsafeClient = {
+  [M in WellKnownMethods as `$${Lowercase<M>}`]: ClientHandler<
+    HandlerDescriptor<
+      EndpointSchema<
+        unknown,
+        unknown,
+        unknown,
+        unknown,
+        Record<number, unknown>
+      >
+    >
+  >
+} & {
+  [K: string]: UnsafeClient
+}
 
 function join(L: string, R: string) {
   L = L.endsWith('/') ? L.slice(0, -1) : L
@@ -157,16 +207,17 @@ function join(L: string, R: string) {
   return L + '/' + R
 }
 
-export function createClient<R extends RouterDescriptor<any>>(
-  path: string,
-  options: RequestInit = {}
-): InferClient<R> {
+export function createClient<
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  R extends RouterDescriptor<any> = RouterDescriptor<{}>
+>(path: string, options: RequestInit = {}): InferClient<R> {
   return <any>new Proxy(
     {},
     {
       get(_, prop) {
         if (typeof prop !== 'string')
           throw new Error('Only string props are allowed')
+        if (prop === '$unsafe') return createClient(path, options)
         if (prop.startsWith('$'))
           return new ClientHandler(
             options,
@@ -174,7 +225,7 @@ export function createClient<R extends RouterDescriptor<any>>(
             prop.substring(1).toUpperCase(),
             {}
           )
-        return (createClient as any)(join(path, prop), options)
+        return createClient(join(path, prop), options)
       }
     }
   )
