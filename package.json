@@ -1,15 +1,15 @@
 {
   "name": "typeful-fetch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Fetch Endpoints with Types",
   "license": "MIT",
   "main": "lib/index.js",
   "repository": "git@github.com:thezzisu/typeful-fetch.git",
   "author": "thezzisu <thezzisu@gmail.com>",
-  "private": false,
+  "packageManager": "yarn@3.3.0",
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./lib/index.js"
   },
   "files": [
     "lib"

@@ -105,3 +105,5 @@ dist
 
 # TypeScript build output
 /lib/
+
+.yarn
