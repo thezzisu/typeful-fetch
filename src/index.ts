@@ -22,6 +22,18 @@ function deepAssign(target: any, ...sources: any[]): any {
   return target
 }
 
+export type FetchOptions =
+  | RequestInit
+  | (() => RequestInit | Promise<RequestInit>)
+export async function resolveFetchOptions(
+  options: FetchOptions
+): Promise<RequestInit> {
+  if (typeof options === 'function') {
+    return await options()
+  }
+  return options
+}
+
 export interface EndpointSchema<
   Body,
   Query,
@@ -56,18 +68,20 @@ export class HandlerFetchError extends Error {
 
 export class ClientHandler<H extends HandlerDescriptor<any>> {
   constructor(
-    public _options: RequestInit,
+    public _clientOptions: FetchOptions,
     public _path: string,
     public _method: string,
-    public _info: H['schema']
+    public _info: H['schema'],
+    public _options: FetchOptions
   ) {}
 
   body(body: UndefinedToUnknown<H['schema']['body']>): ClientHandler<H> {
     return new ClientHandler(
-      this._options,
+      this._clientOptions,
       this._path,
       this._method,
-      Object.assign({}, this._info, { body })
+      Object.assign({}, this._info, { body }),
+      this._options
     )
   }
 
@@ -75,19 +89,21 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
     query: UndefinedToUnknown<H['schema']['querystring']>
   ): ClientHandler<H> {
     return new ClientHandler(
-      this._options,
+      this._clientOptions,
       this._path,
       this._method,
-      Object.assign({}, this._info, { query })
+      Object.assign({}, this._info, { query }),
+      this._options
     )
   }
 
   params(params: UndefinedToUnknown<H['schema']['params']>): ClientHandler<H> {
     return new ClientHandler(
-      this._options,
+      this._clientOptions,
       this._path,
       this._method,
-      Object.assign({}, this._info, { params })
+      Object.assign({}, this._info, { params }),
+      this._options
     )
   }
 
@@ -95,15 +111,26 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
     headers: UndefinedToUnknown<H['schema']['headers']>
   ): ClientHandler<H> {
     return new ClientHandler(
-      this._options,
+      this._clientOptions,
       this._path,
       this._method,
-      Object.assign({}, this._info, { headers })
+      Object.assign({}, this._info, { headers }),
+      this._options
+    )
+  }
+
+  options(options: FetchOptions): ClientHandler<H> {
+    return new ClientHandler(
+      this._clientOptions,
+      this._path,
+      this._method,
+      this._info,
+      options
     )
   }
 
   async fetch(
-    options: RequestInit = {}
+    options: FetchOptions = {}
   ): Promise<UndefinedToUnknown<H['schema']['response'][200]>> {
     let path = this._path
     if (!path.endsWith('/')) path += '/'
@@ -120,7 +147,7 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
       path,
       deepAssign(
         {},
-        this._options,
+        await resolveFetchOptions(this._clientOptions),
         {
           method: this._method,
           headers: {
@@ -131,7 +158,8 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
           },
           body: this._method === 'GET' ? null : JSON.stringify(this._info.body)
         },
-        options
+        await resolveFetchOptions(this._options),
+        await resolveFetchOptions(options)
       )
     )
     if (!resp.ok) throw new HandlerFetchError(resp)
@@ -223,6 +251,7 @@ export function createClient<
             options,
             path,
             prop.substring(1).toUpperCase(),
+            {},
             {}
           )
         return createClient(join(path, prop), options)

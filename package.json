@@ -1,6 +1,6 @@
 {
   "name": "typeful-fetch",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Fetch Endpoints with Types",
   "license": "MIT",
