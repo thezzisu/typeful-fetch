@@ -238,7 +238,7 @@ function join(L: string, R: string) {
 export function createClient<
   // eslint-disable-next-line @typescript-eslint/ban-types
   R extends RouterDescriptor<any> = RouterDescriptor<{}>
->(path: string, options: RequestInit = {}): InferClient<R> {
+>(path: string, options: FetchOptions = {}): InferClient<R> {
   return <any>new Proxy(
     {},
     {
