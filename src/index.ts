@@ -141,6 +141,8 @@ export class ClientHandler<H extends HandlerDescriptor<any>> {
         `/${String(value).replaceAll('$', '$$$$')}/`
       )
     }
+    if (path !== '/' && path.endsWith('/')) path = path.slice(0, -1)
+
     const query = qs.stringify(this._info.query)
     if (query) path += `?${query}`
     const resp = await fetch(
